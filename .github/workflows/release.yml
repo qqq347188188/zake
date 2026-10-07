@@ -1,0 +1,77 @@
+name: Build & Release Decryptor IPA
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "版本号（仅用于产物命名）"
+        required: false
+        default: "dev"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install xcodegen
+        run: brew install xcodegen
+
+      - name: Build dumpdecrypted.dylib (arm64, iOS 16)
+        run: |
+          mkdir -p build
+          SDK=$(xcrun --sdk iphoneos --show-sdk-path)
+          xcrun clang -target arm64-apple-ios16.0 -isysroot "$SDK" \
+            -dynamiclib -fPIC -o build/dumpdecrypted.dylib \
+            src/dumpdecrypted/dumpdecrypted.c
+          codesign -s - --entitlements src/dumpdecrypted/dylib_entitlements.plist \
+            build/dumpdecrypted.dylib
+
+      - name: Generate Xcode project
+        run: xcodegen generate --spec project.yml --project Decryptor.xcodeproj
+
+      - name: Build app (ad-hoc, 关闭签名)
+        run: |
+          xcodebuild -project Decryptor.xcodeproj -scheme Decryptor \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGN_IDENTITY="" \
+            ARCHS=arm64 \
+            build \
+            CONFIGURATION_BUILD_DIR=$PWD/build/app
+
+      - name: 嵌入 dylib 并签名 App
+        run: |
+          cp build/dumpdecrypted.dylib build/app/Decryptor.app/dumpdecrypted.dylib
+          codesign -s - --entitlements src/host/entitlements.plist \
+            --deep build/app/Decryptor.app
+
+      - name: 打包 IPA
+        run: |
+          mkdir -p Payload
+          cp -r build/app/Decryptor.app Payload/
+          zip -r Decryptor.ipa Payload
+          rm -rf Payload
+
+      - name: 上传构建产物（始终）
+        uses: actions/upload-artifact@v4
+        with:
+          name: Decryptor-ipa
+          path: Decryptor.ipa
+
+      - name: 发布到 GitHub Release（仅 tag）
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: Decryptor.ipa
+          name: Decryptor ${{ github.ref_name }}
+          generate_release_notes: true

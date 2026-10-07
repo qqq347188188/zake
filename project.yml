@@ -1,0 +1,22 @@
+name: Decryptor
+options:
+  bundleIdPrefix: com.decryptor
+  deploymentTarget:
+    iOS: "16.0"
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    ENABLE_BITCODE: false
+    ARCHS: arm64
+    VALID_ARCHS: arm64
+    INFOPLIST_FILE: src/host/Info.plist
+    CODE_SIGN_ENTITLEMENTS: src/host/entitlements.plist
+    PRODUCT_BUNDLE_IDENTIFIER: com.decryptor.app
+    PRODUCT_NAME: Decryptor
+targets:
+  Decryptor:
+    type: application
+    platform: iOS
+    sources:
+      - path: src/host
+    dependencies: []
