@@ -15,7 +15,5 @@
     <!-- 派生其他进程时需要 -->
     <key>com.apple.security.get-task-allow</key>
     <true/>
-    <key>com.apple.private.persona-multilevel</key>
-    <true/>
 </dict>
 </plist>
