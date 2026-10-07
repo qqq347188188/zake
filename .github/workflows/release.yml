@@ -96,11 +96,23 @@ jobs:
           zip -r Decryptor.ipa Payload
           rm -rf Payload
 
+      - name: 构建「无 entitlement 调试版」IPA（隔离闪退是否由私有 entitlement 引起）
+        run: |
+          mkdir -p build/debug
+          cp -r build/app/Decryptor.app build/debug/Decryptor.app
+          # 空 entitlements：去掉所有私有键，AMFI 不会拒绝，用于确认 App 本身能否启动
+          printf '<plist version="1.0"><dict/></plist>' > /tmp/empty_ent.plist
+          codesign -f -s - --entitlements /tmp/empty_ent.plist build/debug/Decryptor.app
+          mkdir -p Payload
+          cp -r build/debug/Decryptor.app Payload/
+          zip -r Decryptor-debug.ipa Payload
+          rm -rf Payload
+
       - name: 上传构建产物（始终）
         uses: actions/upload-artifact@v4
         with:
           name: Decryptor-ipa
-          path: Decryptor.ipa
+          path: Decryptor*.ipa
 
       - name: 发布到 GitHub Release（仅 tag）
         if: startsWith(github.ref, 'refs/tags/')
