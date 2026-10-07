@@ -6,6 +6,11 @@ cd "$(dirname "$0")/.."
 rm -rf build Payload
 mkdir -p build
 
+echo "==> 归一化 entitlements（CRLF/BOM 会导致 codesign 解析失败）"
+for f in src/dumpdecrypted/dylib_entitlements.plist src/host/entitlements.plist; do
+  plutil -convert xml1 "$f" -o "$f.tmp" && mv "$f.tmp" "$f"
+done
+
 echo "==> 编译 dumpdecrypted.dylib"
 SDK=$(xcrun --sdk iphoneos --show-sdk-path)
 xcrun clang -target arm64-apple-ios16.0 -isysroot "$SDK" \
@@ -24,9 +29,9 @@ xcodebuild -project Decryptor.xcodeproj -scheme Decryptor \
   CODE_SIGNING_ALLOWED=NO CODE_SIGN_IDENTITY="" ARCHS=arm64 \
   build CONFIGURATION_BUILD_DIR=$PWD/build/app
 
-echo "==> 嵌入 dylib 并签名"
+echo "==> 嵌入 dylib 并签名（不写 --deep，保留 dylib 自身签名）"
 cp build/dumpdecrypted.dylib build/app/Decryptor.app/dumpdecrypted.dylib
-codesign -s - --entitlements src/host/entitlements.plist --deep build/app/Decryptor.app
+codesign -s - --entitlements src/host/entitlements.plist build/app/Decryptor.app
 
 echo "==> 打包 IPA"
 mkdir -p Payload

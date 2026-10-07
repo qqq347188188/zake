@@ -24,6 +24,36 @@ jobs:
       - name: Install xcodegen
         run: brew install xcodegen
 
+      - name: 生成 entitlements（LF / 无 BOM / 无 DOCTYPE，规避 AMFIUnserializeXML 解析失败）
+        run: |
+          cat > src/dumpdecrypted/dylib_entitlements.plist <<'PLIST'
+          <plist version="1.0">
+          <dict>
+              <key>com.apple.private.skip-library-validation</key>
+              <true/>
+          </dict>
+          </plist>
+          PLIST
+
+          cat > src/host/entitlements.plist <<'PLIST'
+          <plist version="1.0">
+          <dict>
+              <key>com.apple.private.security.no-sandbox</key>
+              <true/>
+              <key>com.apple.private.skip-library-validation</key>
+              <true/>
+              <key>com.apple.security.cs.disable-library-validation</key>
+              <true/>
+              <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+              <true/>
+              <key>com.apple.security.get-task-allow</key>
+              <true/>
+              <key>com.apple.private.persona-multilevel</key>
+              <true/>
+          </dict>
+          </plist>
+          PLIST
+
       - name: Build dumpdecrypted.dylib (arm64, iOS 16)
         run: |
           mkdir -p build
@@ -52,8 +82,9 @@ jobs:
       - name: 嵌入 dylib 并签名 App
         run: |
           cp build/dumpdecrypted.dylib build/app/Decryptor.app/dumpdecrypted.dylib
+          # 不写 --deep：保留 dylib 自身的 skip-library-validation 签名
           codesign -s - --entitlements src/host/entitlements.plist \
-            --deep build/app/Decryptor.app
+            build/app/Decryptor.app
 
       - name: 打包 IPA
         run: |
