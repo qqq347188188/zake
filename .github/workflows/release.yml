@@ -65,7 +65,12 @@ jobs:
             build/dumpdecrypted.dylib
 
       - name: Generate Xcode project
-        run: rm -rf Decryptor.xcodeproj && xcodegen generate --spec project.yml
+        run: |
+          rm -rf Decryptor.xcodeproj
+          xcodegen generate --spec project.yml
+          # runner 自带 Xcode 15.4 不支持 xcodegen 2.46 默认生成的 objectVersion(77/Xcode16)，降级到 56(Xcode15)
+          sed -i.bak -E 's/objectVersion = [0-9]+/objectVersion = 56/' Decryptor.xcodeproj/project.pbxproj
+          rm -f Decryptor.xcodeproj/project.pbxproj.bak
 
       - name: Build app (ad-hoc, 关闭签名)
         run: |

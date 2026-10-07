@@ -20,7 +20,13 @@ codesign -s - --entitlements src/dumpdecrypted/dylib_entitlements.plist \
   build/dumpdecrypted.dylib
 
 echo "==> 生成 Xcode 工程"
-rm -rf Decryptor.xcodeproj && xcodegen generate --spec project.yml
+rm -rf Decryptor.xcodeproj
+xcodegen generate --spec project.yml
+# 若本机 Xcode < 16，降级 objectVersion 以兼容
+if grep -q 'objectVersion = 77' Decryptor.xcodeproj/project.pbxproj 2>/dev/null; then
+  sed -i.bak -E 's/objectVersion = [0-9]+/objectVersion = 56/' Decryptor.xcodeproj/project.pbxproj
+  rm -f Decryptor.xcodeproj/project.pbxproj.bak
+fi
 
 echo "==> 构建 App"
 xcodebuild -project Decryptor.xcodeproj -scheme Decryptor \
