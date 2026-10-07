@@ -2,18 +2,11 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <!-- TrollStore 应用：关闭沙箱，以便扫描/派生其他 App -->
+    <!-- 关闭沙箱：扫描/读取其它 App 的 .app 包（Filza 同款必需键） -->
     <key>com.apple.private.security.no-sandbox</key>
     <true/>
-    <!-- 允许本 App 加载未签名的 dumpdecrypted.dylib -->
+    <!-- 允许加载外部/未签名库（与 Filza 一致的私有键；注入 dylib 的库校验绕过实际由设备 amfid patch 提供） -->
     <key>com.apple.private.skip-library-validation</key>
-    <true/>
-    <key>com.apple.security.cs.disable-library-validation</key>
-    <true/>
-    <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
-    <true/>
-    <!-- 派生其他进程时需要 -->
-    <key>com.apple.security.get-task-allow</key>
     <true/>
 </dict>
 </plist>
