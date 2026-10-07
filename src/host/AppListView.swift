@@ -23,8 +23,19 @@ struct AppListView: View {
             .navigationDestination(for: InstalledApp.self) { app in
                 AppDetailView(app: app, log: $log, busy: $busy)
             }
-            .task { apps = AppScanner.scan() }
-            .refreshable { apps = AppScanner.scan() }
+            .task {
+                // 扫描涉及大量文件 I/O，放到后台线程，避免主线程卡死被 watchdog 杀
+                let result = await Task.detached(priority: .userInitiated) {
+                    AppScanner.scan()
+                }.value
+                apps = result
+            }
+            .refreshable {
+                let result = await Task.detached(priority: .userInitiated) {
+                    AppScanner.scan()
+                }.value
+                apps = result
+            }
         }
     }
 

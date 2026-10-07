@@ -4,10 +4,7 @@ import Darwin
 @main
 struct DecryptorApp: App {
     init() {
-        // 注意：TrollStore 应用以 mobile(uid 501) 运行，并非 root。
-        // 切勿在启动期调用 setuid(0)/setgid(0)：一旦处于沙箱内，该调用会触发
-        // seatbelt 直接 SIGKILL 进程且不产生任何 .ips，表现为“闪退无日志”。
-        // 读取其它 App 的包只需 no-sandbox 权限，与 root 无关，故此处不做提权。
+        Self.installCrashLogging()
         Self.appendLaunchLog("init start (uid=\(getuid()))")
         Self.appendLaunchLog("init done")
     }
@@ -18,11 +15,59 @@ struct DecryptorApp: App {
         }
     }
 
-    /// 写启动日志到 App 沙盒 Documents/launch.log，便于在无 IPS 时定位崩因。
-    /// 若文件不存在说明进程在 init 之前就被 AMFI/seatbelt 杀掉（签名/entitlement 问题）。
+    // MARK: - 崩溃记录（写 Documents/crash.log，便于无 IPS 时定位）
+
+    private static var crashLoggingInstalled = false
+
+    private static func installCrashLogging() {
+        guard !crashLoggingInstalled else { return }
+        crashLoggingInstalled = true
+
+        NSSetUncaughtExceptionHandler { exc in
+            let trace = (exc.callStackSymbols as? [String])?.joined(separator: "\n") ?? "<no symbols>"
+            appendCrashLog("NSException: \(exc.name.rawValue) reason=\(exc.reason ?? "")\n\(trace)")
+        }
+
+        let action: @convention(c) (Int32) -> Void = { sig in
+            var addresses: [UnsafeMutableRawPointer?] = Array(repeating: nil, count: 64)
+            let count = backtrace(&addresses, Int32(addresses.count))
+            var out = "SIGNAL \(sig)\n"
+            if let symbols = backtrace_symbols(&addresses, count) {
+                for i in 0..<Int(count) {
+                    if let s = symbols[i] {
+                        out += String(cString: s) + "\n"
+                    }
+                }
+                free(symbols)
+            }
+            appendCrashLog(out)
+            // 恢复原处理并重新触发，便于系统也记录一份
+            signal(sig, SIG_DFL)
+            raise(sig)
+        }
+        signal(SIGABRT, action)
+        signal(SIGSEGV, action)
+        signal(SIGBUS, action)
+        signal(SIGILL, action)
+        signal(SIGTRAP, action)
+    }
+
     private static func appendLaunchLog(_ s: String) {
         guard let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else { return }
         let f = dir.appendingPathComponent("launch.log")
+        let line = "\(Date()) \(s)\n"
+        if let fh = try? FileHandle(forWritingTo: f) {
+            fh.seekToEndOfFile()
+            fh.write(line.data(using: .utf8) ?? Data())
+            try? fh.close()
+        } else {
+            try? line.write(to: f, atomically: true, encoding: .utf8)
+        }
+    }
+
+    private static func appendCrashLog(_ s: String) {
+        guard let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else { return }
+        let f = dir.appendingPathComponent("crash.log")
         let line = "\(Date()) \(s)\n"
         if let fh = try? FileHandle(forWritingTo: f) {
             fh.seekToEndOfFile()
