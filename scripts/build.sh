@@ -20,7 +20,7 @@ codesign -s - --entitlements src/dumpdecrypted/dylib_entitlements.plist \
   build/dumpdecrypted.dylib
 
 echo "==> 生成 Xcode 工程"
-xcodegen generate --spec project.yml --project Decryptor.xcodeproj
+rm -rf Decryptor.xcodeproj && xcodegen generate --spec project.yml
 
 echo "==> 构建 App"
 xcodebuild -project Decryptor.xcodeproj -scheme Decryptor \

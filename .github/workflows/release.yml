@@ -65,7 +65,7 @@ jobs:
             build/dumpdecrypted.dylib
 
       - name: Generate Xcode project
-        run: xcodegen generate --spec project.yml --project Decryptor.xcodeproj
+        run: rm -rf Decryptor.xcodeproj && xcodegen generate --spec project.yml
 
       - name: Build app (ad-hoc, 关闭签名)
         run: |
