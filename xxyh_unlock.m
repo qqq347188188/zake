@@ -12,7 +12,7 @@
 //          vip_valid_till_date":"..." -> vip_valid_till_date":"9999年08月31日"
 //        改完换新 NSData 回调给 App，长度可变，无任何等长约束。
 //
-//  日志：沙盒 Documents/xyh_unlock.log
+//  日志：沙盒 Docments/xyh_unlock.log
 //
 
 #import <Foundation/Foundation.h>
